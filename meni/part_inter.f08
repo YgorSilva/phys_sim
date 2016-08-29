@@ -1,5 +1,5 @@
 module var
-	integer,parameter :: realKind=selected_real_kind(4),criteria=1000,n=10000
+	integer,parameter :: realKind=selected_real_kind(4),criteria=1000,n=100000
 	real(kind=realKind), dimension(2) :: dist,pot
 	real :: delta
 	real,parameter :: max_delta=1
@@ -19,7 +19,7 @@ subroutine run()
 
 		!write(*,*) dist(1)
 		
-		dist(2) = dist(1) + delta
+		dist(2) = abs(dist(1)) + delta
 		
 		pot(1) = 2*((1/dist(1)**12) - (1/dist(1)**6))
 		pot(2) = 2*((1/dist(2)**12) - (1/dist(2)**6))
@@ -51,10 +51,10 @@ program part_inter
 		call random_seed(j)
 		call random_number(dist)
 		
-		dist(1) = dist(1)*10
+		dist(1) = abs(dist(1)*10)
 
 		call run()
-		!write(*,*) dist(1)
+		write(1,*) dist(1)
 		result_table(l)= dist(1)
 
 	end do
