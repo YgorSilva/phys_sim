@@ -1,13 +1,31 @@
 module var
-	integer,parameter :: realKind=selected_real_kind(5),n=1000 !Definindo parametros como precisao do real e numero de simulacoes
+	character,parameter :: cr = char(13)
+
+	integer,parameter :: realKind=selected_real_kind(5),n_max=100 !Definindo parametros como precisao do real e numero de simulacoes
 	real(kind=realKind), dimension(2) :: x,y,dist,pot,delta !Vetores da simulacao, (1) é o valor real e (2) é o suposto valor exceto em delta
 	real,parameter :: max_delta=2 !Valor maximo para uma tentativa
 
-	real, dimension(n) :: result_table,err !Tabela que armazena o resultado final de cada simulacao e erro (desvio pad)
-	real(kind=realKind) :: t1,t2 !Variaveis para comparar tempo
-	integer :: criteria=10000
+	real, dimension(n_max) :: result_table,helpTab !Tabela que armazena o resultado final de cada simulacao e erro (desvio pad)
+	real(kind=realKind) :: t1,t2,err!Variaveis para comparar tempo
+	integer :: criteria=10000,n
 end module
 
+subroutine printTable()
+	use var
+	implicit none
+	integer j
+	do j=0,n_max
+		write(2,*) j,result_table(j)
+	end do
+end subroutine
+subroutine showInfo(i)
+	use var
+	implicit none
+	integer i
+	real :: percent
+	percent = real(i)/real(n_max)*100
+	write(*,"(A,F4.1,A,A)",advance="no") "[",percent,"%]",cr
+end subroutine
 subroutine run()
 	use var
 	implicit none
@@ -67,22 +85,27 @@ subroutine desvio_pad()
 	implicit none
 	integer :: l
 	real(kind=realKind) :: s=0
+	
+	err = 0
+	s=0
 	!Calcula o desvio padrao do array result_table
-	do l=0,n
+	do l=1,n
 		s = result_table(l) + s !Soma a media
 	end do
-	s = s/(n+1) !Realiza a media
-	write(*,"(A33,1X,F15.4)") 'Media final: ', s
-	do l=0,n
+	write(2,*) n
+	s = s/(n) !Realiza a media
+	!write(*,"(A33,1X,F15.4)") 'Media final: ', s !!!!!!!! WRITE
+	do l=1,n
 		result_table(l) = abs(result_table(l) - s) !Pega a diferenca em relaçãoo a media
 	end do
 	result_table = result_table * result_table !Eleva ao quadrado
-	do l=0,n
+	do l=1,n
 		s = result_table(l) + s !Soma denovo
 	end do
-	err = sqrt(s/(n+1))
-	write(*,"(A34,1X,E15.3)") "Desvio Padrão: ", sqrt(s/(n+1)) !Tira a raiz da variância
+	err = sqrt(s/(n))
+	!write(*,"(A34,1X,E15.3)") "Desvio Padrão: ", sqrt(s/(n+1)) !!!!!!! WRITE
 end subroutine
+
 subroutine time_write()
 	use var
 
@@ -94,22 +117,23 @@ end subroutine
 program part_inter
 	use var
 	implicit none
-	integer :: l,j
-	open(1,file="results/sim_vals.dat")
+	integer :: l,j,nCount
+	open(1,file="results/error.dat")
+	
 
-	call CPU_TIME(t1) !Diferença de tempo
-	do l=0,n
-		!Roda a simulacao
-		call run()
-		!Escreve o resultado em um arquivo
-		write(1,*) dist(1)
-		!Salva o resultado para futuro calculo de erro
-		result_table(l)= dist(1)
+	do n=1,n_max
+		do l=0,n
+			!Roda a simulacao
+			call run()
+			!Escreve o resultado em um arquivo
+			!write(1,*) dist(1)
+			!Salva o resultado para futuro calculo de erro
+			result_table(l)= dist(1)
+		end do
+
+		call desvio_pad()
+		write(1,*) n, err
+		call showInfo(n)
 	end do
-	call CPU_TIME(t2) !Diferença de tempo
-
-	call time_write()
-	!Calcula o desvio padrão e a media final
-	call desvio_pad()
 
 end program
