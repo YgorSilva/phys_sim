@@ -1,6 +1,5 @@
-module integration
+module randModule
     implicit none
-    integer:: n = 3000000, s = 10
     contains
         function randArr(min, max, length) !função que retorna um vetor de números aleatórios entre dois números (min e max)
             implicit none
@@ -19,7 +18,15 @@ module integration
             call random_number(x)
             rand = ((max-min)*x)+min
         end function rand
+end module randModule
+program monteCarloIntegration
+    use randModule
+    implicit none
+    integer:: n = 3000000, s = 1
+    real:: x
 
+    x = regErrorVariation()
+    contains
         real function getExtreme(f, xmin, xmax, ismax)!retorna o máximo ou o mínimo de uma função f(x), x->[xmin,xmax]
             implicit none
             real, external:: f
@@ -265,94 +272,14 @@ module integration
             etonx = exp(-x)
         end function etonx
 
-        real function getEqSpot(dlt)
-            implicit none
-            real, dimension(s):: results
-            real:: x0, x, dlt, err, moves = 0.0, total = 0.0, dltx
-            integer::i, j
-            logical:: continuing
-
-            getEqSpot = 0.0
-            do i = 1, s
-                x0 = rand(0.0, 10.0)
-                continuing = .true.
-                moves = 0.0
-                total = 0.0
-                do while(continuing)
-                    dltx = rand((-1.0)*dlt, dlt)
-                    x = x0 + dltx
-                    if(potentialFunc(x) < potentialFunc(x0))then
-                        x0 = x
-                        moves = moves + 1.0
-                    end if
-                    total = total + 1.0
-                    if(moves/total < 0.05 .and. total >= 100.0)then
-                        continuing = .false.
-                    end if
-                end do
-                results(i) = x0
-                getEqSpot = getEqSpot + x0
-            end do
-            getEqSpot = getEqSpot/real(s)
-            err = getError(getEqSpot, results)
-            write(1,*) s, getEqSpot, err
-        end function getEqSpot
-
-        real function simParticleOscilation(x1)
-            implicit none
-            real:: x1, y, x2, eqx, x, dlt = 0.2, ctrl
-            integer:: i
-            logical:: continuing = .true.
-
-            y = potentialFunc(x1)
-            eqx = getEqSpot(0.5)
-            x = x1
-
-            if(x1 < eqx)then
-                ctrl = 1.0
-            else
-                ctrl = 0.0
-            end if
-
-            do while(continuing)
-                if(potentialFunc(x) <= y)then
-                    x = x + rand((ctrl-1.0)*dlt, ctrl*dlt)
-                else
-                    x = x + rand(-(ctrl)*dlt, (-1.0*(ctrl-1.0))*dlt)
-                end if
-
-                if(abs(potentialFunc(x) - y) <= 1e-6)then
-                    x2 = x
-                    continuing = .false.
-                end if
-            end do
-
-            dlt = (x2-x1)/20
-            x = x1
-            do i = 1, 40
-                write(*,1000) x, potentialFunc(x)
-                x = x+dlt
-                if(i == 20)then
-                    dlt = -1.0*dlt
-                end if
-            end do
-            1000 format(f10.6, 1x, f10.6)
-        end function simParticleOscilation
-
-        real function potentialFunc(x)
+        real function getError(x, samples)
             implicit none
             real:: x
-
-            potentialFunc = 2.0*((1.0/(x)**12)- (1.0/(x)**6))
-        end function potentialFunc
-
-        real function getError(x, results)
-            implicit none
-            real:: x
-            real, dimension(s):: results
+            real, dimension(s):: samples
             integer:: i
+            getError = 0.0
             do i = 1, s
-                getError = getError + ((results(i) - x)**2)
+                getError = getError + ((samples(i) - x)**2)
             end do
             getError = (getError/(s))**(0.5)
         end function getError
@@ -360,23 +287,13 @@ module integration
         real function regErrorVariation()
             implicit none
             real:: x
-            integer:: i, max = 990, dlt = 1, seed
+            integer:: i, max = 700, dlt = 1, seed
 
-            open(1, file='errorVariation.dat')
+            open(1, file='integralErrorVariation.dat')
             do i=1, max
-                seed = irand()
-                call random_seed()
-                x = getEqSpot(0.1)
+                x = integrate(square, 0.0, 1.0)
                 s = s+dlt
             end do
             close(1)
         end function regErrorVariation
-end module integration
-program monteCarloIntegration
-    use integration
-    implicit none
-    integer:: i, max = 1000
-    real:: x, eqSpot
-
-    x = regErrorVariation()
 end program
